@@ -1,3 +1,5 @@
+#include <Nano33BLE_System.h>
+
 /*
 ##################################################
 #       ___  __   ____  _      ___         __    #
@@ -30,7 +32,7 @@
       -Roll
       -Pitch
     -Transfert wind data on TX1    
-
++
   Automatic Reconnection
   Watchdog is activate for 30s
 
@@ -49,7 +51,8 @@
 
 // ### BLE
 #define CALYPSO_NAME "ULTRASONIC"
-#define CALYPSO_ADDR "cd:fe:29:6e:da:87"
+//#define CALYPSO_ADDR "cd:fe:29:6e:da:87"
+#define CALYPSO_ADDR "f1:d6:f7:8f:d1:27"
 BLEDevice peripheral;
 BLEService service_180d;
 
@@ -109,7 +112,7 @@ char Calypso_DataRateStr[10];
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // ### OLED Display
 
 // ### Roll and Pitch
@@ -152,17 +155,17 @@ SimpleKalmanFilter simpleKalmanFilterAX(0.1, 0.1, 0.1);
 SimpleKalmanFilter simpleKalmanFilterAY(0.1, 0.1, 0.1);
 SimpleKalmanFilter simpleKalmanFilterAZ(0.1, 0.1, 0.1);
 
-//SimpleKalmanFilter simpleKalmanFilterWindXComp(0.1, 0.1, 0.01);
-//SimpleKalmanFilter simpleKalmanFilterWindYComp(0.1, 0.1, 0.01);
+SimpleKalmanFilter simpleKalmanFilterWindXComp(0.1, 0.1, 0.01);
+SimpleKalmanFilter simpleKalmanFilterWindYComp(0.1, 0.1, 0.01);
 
-//float estimated_valueWindXComp = 0;
-//float estimated_valueWindYComp = 0;
+float estimated_valueWindXComp = 0;
+float estimated_valueWindYComp = 0;
 
-//float estimated_valueWind_Speed = 0;
-//float estimated_valueWind_Angle = 0;
+float estimated_valueWind_Speed = 0;
+float estimated_valueWind_Angle = 0;
 
-//char estimated_valueWind_Speed_Str[15];
-//char estimated_valueWind_Angle_Str[15];
+char estimated_valueWind_Speed_Str[15];
+char estimated_valueWind_Angle_Str[15];
 
 // Serial output refresh time millisecond
 const long SERIAL_REFRESH_TIME = 100;  // 0.5s
@@ -196,14 +199,14 @@ void Connect() {
 #if SERIALDEBUG == 1
   Serial.println("Connecting...");
 #endif
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print(peripheral.localName());
-  display.setCursor(0, 8);
-  display.print(peripheral.address());
-  display.setCursor(0, 16);
-  display.print("Connecting...");
-  display.display();
+////  display.clearDisplay();
+////  display.setCursor(0, 0);
+////  display.print(peripheral.localName());
+////  display.setCursor(0, 8);
+////  display.print(peripheral.address());
+////  display.setCursor(0, 16);
+////  display.print("Connecting...");
+////  display.display();
 
   while (peripheral.connect() == false) {
     // Watchdog
@@ -213,16 +216,16 @@ void Connect() {
 #if SERIALDEBUG == 1
     Serial.println("Failed to connect!");
 #endif
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print(peripheral.localName());
-    display.setCursor(0, 8);
-    display.print(peripheral.address());
-    display.setCursor(0, 16);
-    display.print("Failed to connect! ");
-    display.print(nb);
-    display.display();
-    
+  //  display.clearDisplay();
+  //  display.setCursor(0, 0);
+  //  display.print(peripheral.localName());
+  //  display.setCursor(0, 8);
+  //  display.print(peripheral.address());
+  //  display.setCursor(0, 16);
+  //  display.print("Failed to connect! ");
+  //  display.print(nb);
+  //  display.display();
+
     delay(500);
     
     if (nb++ >= 10) {
@@ -232,10 +235,9 @@ void Connect() {
   }
 
   peripheral.discoverAttributes();
-//        Serial.println(peripheral.serviceCount());
-//
-//        Serial.println(peripheral.advertisedServiceUuidCount());
-//
+  Serial.println(peripheral.serviceCount());
+  Serial.println(peripheral.advertisedServiceUuidCount());
+
   service_180d = peripheral.service("180d");
   
   DataCalypso_2a39 = service_180d.characteristic("2a39");
@@ -254,14 +256,14 @@ void Connect() {
 #if SERIALDEBUG == 1
   Serial.println("Connected...");
 #endif
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print(peripheral.localName());
-  display.setCursor(0, 8);
-  display.print(peripheral.address());
-  display.setCursor(0, 16);
-  display.print("Connected...");
-  display.display();
+//  display.clearDisplay();
+//  display.setCursor(0, 0);
+//  display.print(peripheral.localName());
+//  display.setCursor(0, 8);
+//  display.print(peripheral.address());
+//  display.setCursor(0, 16);
+//  display.print("Connected...");
+//  display.display();
 }
 
 void Calypso_WindXYComp() {
@@ -288,20 +290,20 @@ void setup() {
   Serial.println("Started");
 #endif
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
-#if SERIALDEBUG == 1    
-    Serial.println(F("SSD1306 allocation failed"));
-#endif
-    for(;;); // Don't proceed, loop forever
-  }
+// SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+//  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
+//  #if SERIALDEBUG == 1
+//    Serial.println(F("SSD1306 allocation failed"));
+//  #endif
+//  for(;;); // Don't proceed, loop forever
+// }
   
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.print("Starting...");
-  display.display();
+//  display.clearDisplay();
+//  display.setTextSize(1);
+//  display.setTextColor(SSD1306_WHITE);
+//  display.setCursor(0, 0);
+//  display.print("Starting...");
+//  display.display();
 
   // Watchdog
   // Reload the WDTs RR[0] reload register
@@ -312,18 +314,18 @@ void setup() {
 #if SERIALDEBUG == 1
     Serial.println("Starting BLE failed!");
 #endif    
-    display.setCursor(0, 8);
-    display.print("Starting BLE failed!");
-    display.display();
+  //  display.setCursor(0, 8);
+  //  display.print("Starting BLE failed!");
+  //  display.display();
   
     while (1);
   }
 #if SERIALDEBUG == 1
   Serial.println("BLE Central - Peripheral Explorer");
 #endif
-  display.setCursor(0, 8);
-  display.print("BLE Explorer");
-  display.display();
+//  display.setCursor(0, 8);
+//  display.print("BLE Explorer");
+//  display.display();
 
   // start scanning for peripherals
   BLE.scan();
@@ -366,10 +368,10 @@ void setup() {
 #if SERIALDEBUG == 1
     Serial.println("Failed to initialize IMU!");
 #endif    
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print("IMU Init Failed!");
-    display.display();
+  //  display.clearDisplay();
+  //  display.setCursor(0, 0);
+  //  display.print("IMU Init Failed!");
+  //  display.display();
     
     while (1);
   }
@@ -411,7 +413,7 @@ void loop() {
   float estimated_valueAX = simpleKalmanFilterAX.updateEstimate(Ax);
   float estimated_valueAY = simpleKalmanFilterAY.updateEstimate(Ay);
   float estimated_valueAZ = simpleKalmanFilterAZ.updateEstimate(Az);
-  
+
   // Vitesse de la tete de mat
   float MWx = (estimated_valueGY * DEG_TO_RAD * Z_MAT - estimated_valueGZ * DEG_TO_RAD * Y_MAT) * MS_TO_KNOT;
   float MWy = (-estimated_valueGX * DEG_TO_RAD * Z_MAT - estimated_valueGZ * DEG_TO_RAD * X_MAT) * MS_TO_KNOT;
@@ -440,7 +442,7 @@ void loop() {
       Calypso_WindXYComp();
 
       // Filtrage du vent
-/*    estimated_valueWindXComp = simpleKalmanFilterWindXComp.updateEstimate(Calypso_WindXComp);
+    estimated_valueWindXComp = simpleKalmanFilterWindXComp.updateEstimate(Calypso_WindXComp);
       estimated_valueWindYComp = simpleKalmanFilterWindYComp.updateEstimate(Calypso_WindYComp);
 
       estimated_valueWind_Speed = sqrt(pow(estimated_valueWindXComp, 2) + pow(estimated_valueWindYComp, 2));
@@ -449,12 +451,12 @@ void loop() {
       if (estimated_valueWind_Angle < 0) {
         estimated_valueWind_Angle = estimated_valueWind_Angle + 360;
       }
-*/
+
  
       // Compensation du vent en fonction de la vitesse en tete de mat
       float CMWx = MWx - Calypso_WindXComp;
       float CMWy = MWy - Calypso_WindYComp;
-    
+
       CMWS = sqrt(pow(CMWx, 2) + pow(CMWy, 2));
       CMWA = atan2(CMWy/cos(IMU_Roll * DEG_TO_RAD), CMWx) * RAD_TO_DEG;
       if (CMWA < 0) {
@@ -498,6 +500,7 @@ void loop() {
   // send to Serial output every 100ms
   // use the Serial Ploter for a good visualization
   if (millis() > Serial_refresh_time) {
+    Serial.print("G:");
     Serial.print(Gx,4);
     Serial.print(",");
     Serial.print(estimated_valueGX,4);
@@ -509,8 +512,9 @@ void loop() {
     Serial.print(Gz,4);
     Serial.print(",");
     Serial.print(estimated_valueGZ,4);
-    Serial.print(",");
-    
+    Serial.print("\n");
+
+    Serial.print("W Spd,Dir:");
     Serial.print(Calypso_WindSpeed,2);
     Serial.print(",");
     Serial.print(Calypso_WindDirection,2);
@@ -519,7 +523,7 @@ void loop() {
     Serial.print(",");
     Serial.print(MWy,4);
 
-    Serial.print(",");
+    Serial.print("\nAxe,ye,ze:");
     Serial.print(Ax,4);
     Serial.print(",");
     Serial.print(estimated_valueAX,4);
@@ -532,12 +536,12 @@ void loop() {
     Serial.print(",");
     Serial.print(estimated_valueAZ, 4);
    
-    Serial.print(",");
+    Serial.print("\n,Rll,Ptch:");
     Serial.print(IMU_Roll, 4);
     Serial.print(",");
     Serial.print(IMU_Pitch, 4);
 
-    Serial.print(",");
+    Serial.print("\nAcc:");
     Serial.print(acc_total_vector, 4);
 
     Serial.println();
@@ -548,7 +552,7 @@ void loop() {
 
   // send to OLED output every 500ms
   if (millis() > OLED_refresh_time) {
-    
+
     display_data();
 
     OLED_refresh_time = millis() + OLED_REFRESH_TIME;
@@ -574,116 +578,117 @@ void extractData(const unsigned char data[], int length) {
 #endif
   
 #if SERIALDEBUG == 1
-//  //Wind Speed
-//  Serial.print("Calypso Wind Speed: ");
-//  Serial.println(Calypso_WindSpeed, 2);
-//  //Wind Direction
-//  Serial.print("Calypso Wind Direction: ");
-//  Serial.println(Calypso_WindDirection, DEC);
-//  //Battery level
-//  Serial.print("Calypso Battery level: ");
-//  Serial.println(Calypso_BatteryLevel, DEC);
-//  //Calypso_Temperature Level
-//  Serial.print("Calypso Temperature Level: ");
-//  Serial.println(Calypso_Temperature, DEC);
-//  
-//  //Calypso Roll
-//  Serial.print("Calypso Roll: ");
-//  Serial.println(Calypso_Roll, DEC);
-//  //Calypso Pitch
-//  Serial.print("Calypso Pitch: ");
-//  Serial.println(Calypso_Pitch, DEC);
-//  //Calypso COMPASS
-//  Serial.print("Calypso COMPASS: ");
-//  Serial.println(Calypso_Compass, DEC);
-//  
-//
-//  Serial.println();
+  //Wind Speed
+  Serial.print("Calypso Wind Speed: ");
+  Serial.println(Calypso_WindSpeed, 2);
+  //Wind Direction
+  Serial.print("Calypso Wind Direction: ");
+  Serial.println(Calypso_WindDirection, DEC);
+  //Battery level
+  Serial.print("Calypso Battery level: ");
+  Serial.println(Calypso_BatteryLevel, DEC);
+  //Calypso_Temperature Level
+  Serial.print("Calypso Temperature Level: ");
+  Serial.println(Calypso_Temperature, DEC);
+
+#if ECOMPASS == 1
+  //Calypso Roll
+  Serial.print("Calypso Roll: ");
+  Serial.println(Calypso_Roll, DEC);
+  //Calypso Pitch
+  Serial.print("Calypso Pitch: ");
+  Serial.println(Calypso_Pitch, DEC);
+  //Calypso COMPASS
+  Serial.print("Calypso COMPASS: ");
+  Serial.println(Calypso_Compass, DEC);
+#endif
+
+  Serial.println();
 #endif
 }
 
 void display_data() {
   // OLED Display
-  display.clearDisplay();
+//  display.clearDisplay();
   
-  display.setCursor(0, 0);
+//  display.setCursor(0, 0);
   sprintf(Calypso_WindSpeedStr, "AWS:%4.1fk", Calypso_WindSpeed);
-  display.print(Calypso_WindSpeedStr);
+//  display.print(Calypso_WindSpeedStr);
   
-  display.setCursor(64, 0);
+//  display.setCursor(64, 0);
   sprintf(Calypso_WindDirectionStr, "AWD:%4d%c", Calypso_WindDirection, DEGRES);
-  display.print(Calypso_WindDirectionStr);
+//  display.print(Calypso_WindDirectionStr);
  
-  display.setCursor(0, 8);
+//  display.setCursor(0, 8);
   sprintf(CMWSStr, "CWS:%4.1fk", CMWS);
-  display.print(CMWSStr);
+//  display.print(CMWSStr);
   
-  display.setCursor(64, 8);
+//  display.setCursor(64, 8);
   sprintf(CMWAStr, "CWD:%4d%c", (int)CMWA, DEGRES);
-  display.print(CMWAStr);
+//  display.print(CMWAStr);
 
-  /*
-  display.setCursor(0, 8);
-  sprintf(estimated_valueWind_Speed_Str, "FWS:%4.1fk", estimated_valueWind_Speed);
-  display.print(estimated_valueWind_Speed_Str);
   
-  display.setCursor(64, 8);
+//  display.setCursor(0, 8);
+  sprintf(estimated_valueWind_Speed_Str, "FWS:%4.1fk", estimated_valueWind_Speed);
+//  display.print(estimated_valueWind_Speed_Str);
+  
+//  display.setCursor(64, 8);
   sprintf(estimated_valueWind_Angle_Str, "FWD:%4d%c", (int)estimated_valueWind_Angle, DEGRES);
-  display.print(estimated_valueWind_Angle_Str);
-  */
-  display.setCursor(0, 16);
+//  display.print(estimated_valueWind_Angle_Str);
+ 
+//  display.setCursor(0, 16);
   sprintf(IMU_RollStr, "R: %5.1f%c", IMU_Roll, DEGRES); // IMU_Roll
-  display.print(IMU_RollStr);
+//  display.print(IMU_RollStr);
 
-  display.setCursor(64, 16);
+//  display.setCursor(64, 16);
   sprintf(IMU_PitchStr, "P: %5.1f%c", IMU_Pitch, DEGRES); // IMU_Pitch
-  display.print(IMU_PitchStr);
+//  display.print(IMU_PitchStr);
  
 #if ECOMPASS == 0
-  display.setCursor(0, 24);
+//  display.setCursor(0, 24);
   sprintf(Calypso_BatteryLevelStr, "Batt:%3d%c", Calypso_BatteryLevel, PERCENT);
-  display.print(Calypso_BatteryLevelStr);
+//  display.print(Calypso_BatteryLevelStr);
   
-  display.setCursor(64, 24);
+//  display.setCursor(64, 24);
   sprintf(Calypso_TemperatureStr, "T:%3d%c", Calypso_Temperature, DEGRES);
-  display.print(Calypso_TemperatureStr);
+//  display.print(Calypso_TemperatureStr);
 
-  display.setCursor(106, 24);
+//  display.setCursor(106, 24);
   sprintf(Calypso_DataRateStr, "%1dHz", Calypso_DataRate);
-  display.print(Calypso_DataRateStr);
+//  display.print(Calypso_DataRateStr);
   
 #else 
   
-  display.setCursor(0, 24);
+//  display.setCursor(0, 24);
   sprintf(Calypso_RollStr, "R:%4.1f%c", Calypso_Roll, DEGRES); // Calypso_Roll
-  display.print(Calypso_RollStr);
+//  display.print(Calypso_RollStr);
 
-  display.setCursor(45, 24);
+//  display.setCursor(45, 24);
   sprintf(Calypso_PitchStr, "P:%4.1f%c", Calypso_Pitch, DEGRES); // Calypso_Pitch
-  display.print(Calypso_PitchStr);
+//  display.print(Calypso_PitchStr);
 
-  display.setCursor(90, 24);
+//  display.setCursor(90, 24);
   sprintf(Calypso_CompassStr, "%4d%c", Calypso_Compass, DEGRES); // Calypso_Compass
-  display.print(Calypso_CompassStr);
+//  display.print(Calypso_CompassStr);
 #endif
 
 
-  display.display();
+//  display.display();
  
 }
 
 void DataTransfert() {
    int checksum;
   
-  //sprintf(DataTr, "%4.1f,%4d,%4.1f,%4d,%5.1f,%5.1f,%3d", Calypso_WindSpeed, Calypso_WindDirection, CMWS, (int)CMWA, IMU_Roll, IMU_Pitch, Temperature);
-//  sprintf(NMEA_Data, "CALRW,%f,%d,%f,%d,%f,%f,%d\0",
-//                  Calypso_WindSpeed,
-//                  Calypso_WindDirection,
-//                  CMWS,
-//                  (int)CMWA,
-//                  IMU_Roll,
-//                  IMU_Pitch,
-//                  Calypso_Temperature);
+  sprintf(DataTr, "%4.1f,%4d,%4.1f,%4d,%5.1f,%5.1f,%3d", Calypso_WindSpeed, Calypso_WindDirection, CMWS, (int)CMWA, IMU_Roll, IMU_Pitch, Calypso_Temperature);
+  sprintf(NMEA_Data, "CALRW,%f,%d,%f,%d,%f,%f,%d\0",
+                  Calypso_WindSpeed,
+                  Calypso_WindDirection,
+                  CMWS,
+                  (int)CMWA,
+                  IMU_Roll,
+                  IMU_Pitch,
+                  Calypso_Temperature);
 
   sprintf(NMEA_Data, "IIMWV,%.1f,R,%.1f,K\0",
                   (float)Calypso_WindDirection,
